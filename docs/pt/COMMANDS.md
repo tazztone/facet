@@ -38,9 +38,9 @@ O Facet registra cada escaneamento (estado, modo, diretórios, contadores) e cad
 
 ### Modos de Processamento
 
-**Multi-passo (padrão):** detecta a VRAM e carrega os modelos um de cada vez. Cada passo carrega o seu modelo, processa todas as fotos e então o baixa, de modo que os modelos de alta qualidade rodam mesmo com pouca VRAM.
+**Multi-passo (padrão):** detecta a VRAM e carrega os modelos um por um. Cada passo carrega seu modelo, processa todas as fotos e depois o descarrega para liberar VRAM, de modo que modelos de alta qualidade rodam mesmo com VRAM limitada; um plano cujos modelos cabem todos em uma única passagem os mantém carregados durante toda a varredura.
 
-**Passo único (`--single-pass`):** carrega todos os modelos de uma vez. Mais rápido, mas exige mais VRAM.
+**Passo único (`--single-pass`):** carrega todos os modelos de uma vez. É mais rápido, mas requer mais VRAM.
 
 - Pontua a estética com a cabeça CLIP+MLP, então se aplica aos perfis `legacy` e `8gb`.
 - Em `16gb` e `24gb` o modelo estético é o TOPIQ, que só roda em multi-passo. Um pedido de passo único (`--single-pass` ou `processing.mode: "single-pass"`) registra um aviso e roda em multi-passo.

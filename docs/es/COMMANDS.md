@@ -38,7 +38,7 @@ Facet registra cada escaneo (estado, modo, directorios, contadores) y cada error
 
 ### Modos de procesamiento
 
-**Multipaso (por defecto):** detecta la VRAM y carga los modelos de uno en uno. Cada paso carga su modelo, procesa todas las fotos y luego lo descarga, de modo que los modelos de alta calidad se ejecutan incluso con VRAM limitada.
+**Multipaso (por defecto):** detecta la VRAM y carga los modelos de uno en uno. Cada paso carga su modelo, procesa todas las fotos y luego lo descarga para liberar VRAM, de modo que los modelos de alta calidad se ejecutan incluso con VRAM limitada; un plan cuyos modelos caben todos en un solo paso los mantiene cargados durante todo el escaneo.
 
 **Un solo paso (`--single-pass`):** carga todos los modelos a la vez. Es más rápido, pero requiere más VRAM.
 

@@ -38,7 +38,7 @@ Facet zeichnet jeden Scan (Status, Modus, Verzeichnisse, Zähler) und jeden Fehl
 
 ### Verarbeitungsmodi
 
-**Multi-Pass (Standard):** erkennt den VRAM und lädt die Modelle nacheinander. Jeder Pass lädt sein Modell, verarbeitet alle Fotos und entlädt es dann, sodass hochwertige Modelle auch mit begrenztem VRAM laufen.
+**Multi-Pass (Standard):** erkennt den VRAM und lädt die Modelle nacheinander. Jeder Pass lädt sein Modell, verarbeitet alle Fotos und entlädt es dann, um VRAM freizugeben, sodass hochwertige Modelle auch mit begrenztem VRAM laufen; ein Plan, dessen Modelle alle in einen einzigen Durchlauf passen, hält sie stattdessen für den ganzen Scan geladen.
 
 **Single-Pass (`--single-pass`):** lädt alle Modelle gleichzeitig. Schneller, benötigt aber mehr VRAM.
 

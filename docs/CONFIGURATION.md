@@ -562,7 +562,7 @@ Selects which models are used per VRAM profile.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `vram_profile` | `"auto"` | Active profile (`auto`, `legacy`, `8gb`, `16gb`, `24gb`); `FACET_VRAM_PROFILE` overrides it (see below) |
-| `keep_in_ram` | `"auto"` | Keep models in RAM between multi-pass chunks (`"auto"`, `"always"`, `"never"`); `auto` checks free RAM first |
+| `keep_in_ram` | `"auto"` | Keep models in RAM between multi-pass chunks (`"auto"`, `"always"`, `"never"`); `auto` checks free RAM first. A single-pass plan on CUDA keeps its models in VRAM between chunks instead; `"never"` disables this |
 | `ram_cache_reserve_gb` | `4.0` (optional, not in the shipped file) | RAM (GB) to leave free beside a cached model under `"auto"` |
 | `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | PyIQA models to run for this profile (all four profiles run the full set) |
 | `profiles.*.saliency_enabled` | `true` (all profiles) | Run BiRefNet subject saliency for this profile |
@@ -753,16 +753,12 @@ On `16gb`/`24gb` (TOPIQ aesthetic), `single-pass` logs a warning and runs multi-
 Instead of loading all models at once, multi-pass:
 
 1. Loads images in RAM chunks (default `ram_chunk_size`: 32)
-2. For each chunk, runs models sequentially: load model → process chunk → unload model
+2. For each chunk, runs the passes sequentially: load the pass's models → process the chunk → unload them. A plan that fits in a single pass keeps its models loaded instead (see below)
 3. Combines results in a final aggregation pass
 
 Each image is decoded once per chunk and shared by all passes. Passes are grouped to fit the available VRAM, so the larger VLMs run even on small cards.
-
-- Loader threads also compute EXIF, technical metrics, rule-based composition, the perceptual hash and a shared 1024 px copy for the pyiqa models and Q-ReAlign.
+| `keep_in_ram` | `"auto"` | Keep models in RAM between multi-pass chunks (`"auto"`, `"always"`, `"never"`); `auto` checks free RAM first. A single-pass plan on CUDA keeps its models in VRAM between chunks instead; `"never"` disables this |
 - A composition error fails only that photo. It is recorded in `scan_failures` under stage `composition`; retry with `--retry-failed`.
-- On a CUDA GPU, a chunk is decoded while the next models load, when free host memory allows and `keep_in_ram` is not `"never"`. Otherwise (and always on CPU and Apple MPS) it is decoded first. Results are identical either way.
-- When memory runs short before a chunk, the RAM cache releases the model needed farthest in the future first, and keeps `ram_cache_reserve_gb` free.
-- The scan summary reports `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` and `Decode wall`.
 
 ### Auto-Tuning Behavior
 
@@ -786,7 +782,7 @@ When VRAM allows, several models run in the same pass:
 | 12GB\* (`16gb` profile, opt-in) | Qwen3.5 tagger + Q-ReAlign | SigLIP + saliency + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB (`16gb` profile) | Qwen3.5 tagger + SigLIP + TOPIQ | Q-ReAlign + saliency + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB (`24gb` profile) | Qwen3.5 4B tagger + SigLIP + Q-ReAlign + saliency | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+ (`24gb` profile) | All models together (single pass) | - | - | - |
+| 35GB+ (`24gb` profile) | All models together (single pass; the weights stay in VRAM for the whole scan) | - | - | - |
 
 The rows are the plans for cards reporting 8.0, 11.7, 15.99 and 23.99 GiB of total VRAM; 34.8 GiB or more plans a single pass. The planner keeps 1.3 GiB free for CUDA, ONNX Runtime and the desktop. A 12GB card is not selected automatically (see [VRAM Auto-Detection](#vram-auto-detection)): set `"vram_profile": "16gb"` or `FACET_VRAM_PROFILE=16gb`.
 

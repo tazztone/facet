@@ -560,10 +560,8 @@ Wählt aus, welche Modelle je VRAM-Profil verwendet werden.
 | Einstellung | Standard | Beschreibung |
 |---------|---------|-------------|
 | `vram_profile` | `"auto"` | Aktives Profil (`auto`, `legacy`, `8gb`, `16gb`, `24gb`); `FACET_VRAM_PROFILE` überschreibt es (siehe unten) |
-| `keep_in_ram` | `"auto"` | Modelle zwischen Multi-Pass-Chunks im RAM halten (`"auto"`, `"always"`, `"never"`); `auto` prüft zuerst den freien RAM |
+| `keep_in_ram` | `"auto"` | Behält Modelle zwischen Multi-Pass-Chunks im RAM (`"auto"`, `"always"`, `"never"`); `auto` prüft zuerst den freien RAM. Ein Single-Pass-Plan unter CUDA behält Modelle stattdessen im VRAM; `"never"` deaktiviert dies |
 | `ram_cache_reserve_gb` | `4.0` (optional, nicht in der mitgelieferten Datei) | RAM (GB), der unter `"auto"` neben einem gecachten Modell frei bleiben muss |
-| `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | PyIQA-Modelle, die für dieses Profil ausgeführt werden (alle vier Profile führen den vollständigen Satz aus) |
-| `profiles.*.saliency_enabled` | `true` (alle Profile) | BiRefNet-Subjekt-Saliency für dieses Profil ausführen |
 | `clip.model_name` | `"google/siglip2-so400m-patch16-naflex"` | SigLIP 2 NaFlex Embedding-Modell (16gb/24gb) |
 | `clip.backend` | `"transformers"` | `"transformers"` (SigLIP 2 NaFlex) oder `"open_clip"` (legacy) |
 | `clip.embedding_dim` | `1152` | Embedding-Dimensionen (1152 für SigLIP 2) |
@@ -752,16 +750,14 @@ Bei `16gb`/`24gb` (Ästhetik mit TOPIQ) protokolliert `single-pass` eine Warnung
 Anstatt alle Modelle gleichzeitig zu laden, geht Multi-Pass wie folgt vor:
 
 1. Lädt Bilder in RAM-Chunks (Standard `ram_chunk_size`: 32)
-2. Führt für jeden Chunk die Modelle sequenziell aus: Modell laden → Chunk verarbeiten → Modell entladen
+2. Führt für jeden Chunk die Durchläufe sequenziell aus: Modelle des Durchlaufs laden → Chunk verarbeiten → entladen. Ein Plan, der in einen einzigen Durchlauf passt, hält seine Modelle stattdessen geladen (siehe unten)
 3. Kombiniert die Ergebnisse in einem abschließenden Aggregationsdurchlauf
 
 Jedes Bild wird einmal pro Chunk dekodiert und von allen Durchläufen gemeinsam genutzt. Durchläufe werden so gruppiert, dass sie in den verfügbaren VRAM passen, sodass auch die größeren VLMs auf kleinen Karten laufen.
 
 - Die Loader-Threads berechnen außerdem EXIF, technische Metriken, die regelbasierte Komposition, den Perceptual Hash und eine gemeinsame 1024-px-Kopie für die pyiqa-Modelle und Q-ReAlign.
-- Ein Kompositionsfehler lässt nur dieses eine Foto scheitern. Er wird in `scan_failures` unter der Stufe `composition` erfasst; Wiederholung mit `--retry-failed`.
+| `keep_in_ram` | `"auto"` | Behält Modelle zwischen Multi-Pass-Chunks im RAM (`"auto"`, `"always"`, `"never"`); `auto` prüft zuerst den freien RAM. Ein Single-Pass-Plan unter CUDA behält Modelle stattdessen im VRAM; `"never"` deaktiviert dies |
 - Auf einer CUDA-GPU wird ein Chunk dekodiert, während die nächsten Modelle laden, sofern der freie Host-Speicher es zulässt und `keep_in_ram` nicht `"never"` ist. Andernfalls (und immer auf CPU und Apple MPS) wird er zuerst dekodiert. Die Ergebnisse sind in beiden Fällen identisch.
-- Wird der Speicher vor einem Chunk knapp, gibt der RAM-Cache zuerst das Modell ab, das am spätesten wieder benötigt wird, und hält `ram_cache_reserve_gb` frei.
-- Die Scan-Zusammenfassung meldet `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` und `Decode wall`.
 
 ### Auto-Tuning-Verhalten
 
@@ -785,7 +781,7 @@ Wenn der VRAM es zulässt, laufen mehrere Modelle im selben Durchlauf:
 | 12GB\* (Profil `16gb`, Opt-in) | Qwen3.5-Tagger + Q-ReAlign | SigLIP + Salienz + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB (Profil `16gb`) | Qwen3.5-Tagger + SigLIP + TOPIQ | Q-ReAlign + Salienz + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB (Profil `24gb`) | Qwen3.5-4B-Tagger + SigLIP + Q-ReAlign + Salienz | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+ (Profil `24gb`) | Alle Modelle zusammen (Single-Pass) | - | - | - |
+| 35GB+ (Profil `24gb`) | Alle Modelle zusammen (Single-Pass; die Gewichte bleiben für den ganzen Scan im VRAM) | - | - | - |
 
 Die Zeilen sind die Pläne für Karten, die 8,0, 11,7, 15,99 und 23,99 GiB Gesamt-VRAM melden; ab 34,8 GiB wird ein einziger Durchlauf geplant. Der Planer hält 1,3 GiB für CUDA, ONNX Runtime und den Desktop frei. Eine 12-GB-Karte wird nicht automatisch ausgewählt (siehe [Automatische VRAM-Erkennung](#automatische-vram-erkennung)): Setzen Sie `"vram_profile": "16gb"` oder `FACET_VRAM_PROFILE=16gb`.
 

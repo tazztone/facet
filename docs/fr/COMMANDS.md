@@ -38,9 +38,9 @@ Facet enregistre chaque analyse (statut, mode, répertoires, compteurs) et chaqu
 
 ### Modes de traitement
 
-**Multi-passes (par défaut) :** détecte la VRAM et charge les modèles un par un. Chaque passe charge son modèle, traite toutes les photos, puis le décharge, de sorte que des modèles de haute qualité s'exécutent même avec une VRAM limitée.
+**Multi-passes (par défaut) :** détecte la VRAM et charge les modèles un par un. Chaque passe charge son modèle, traite toutes les photos, puis le décharge pour libérer la VRAM, de sorte que des modèles de haute qualité s'exécutent même avec une VRAM limitée ; un plan dont tous les modèles tiennent en une seule passe les garde chargés pendant tout le scan.
 
-**Passe unique (`--single-pass`) :** charge tous les modèles en même temps. Plus rapide, mais nécessite plus de VRAM.
+**Passe unique (`--single-pass`) :** charge tous les modèles en même temps. Plus rapide, mais nécessite plus de VRAM.
 
 - L'esthétique est notée par la tête CLIP+MLP, ce mode vaut donc pour les profils `legacy` et `8gb`.
 - Sur `16gb` et `24gb`, le modèle d'esthétique est TOPIQ, que seul le multi-passes exécute. Une demande de passe unique (`--single-pass` ou `processing.mode: "single-pass"`) journalise un avertissement et s'exécute en multi-passes.

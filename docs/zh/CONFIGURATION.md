@@ -560,7 +560,7 @@ penalty = min(noise_max_penalty_points, (noise_sigma - threshold) * noise_penalt
 | 设置 | 默认值 | 说明 |
 |---------|---------|-------------|
 | `vram_profile` | `"auto"` | 生效的配置档（`auto`、`legacy`、`8gb`、`16gb`、`24gb`）；`FACET_VRAM_PROFILE` 可覆盖它（见下文） |
-| `keep_in_ram` | `"auto"` | 在多遍处理的各分块之间把模型留在内存中（`"auto"`、`"always"`、`"never"`）；`auto` 会先检查可用内存 |
+| `keep_in_ram` | `"auto"` | 在多阶段分块之间将模型保留在 RAM 中（`"auto"`、`"always"`、`"never"`）；`auto` 先检查可用 RAM。CUDA 上的单阶段方案则将模型保留在 VRAM 中；`"never"` 也会禁用该特性 |
 | `ram_cache_reserve_gb` | `4.0`（可选，随附文件中没有） | 在 `"auto"` 下，缓存一个模型时要为主机留出的可用内存（GB） |
 | `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | 本配置档要运行的 PyIQA 模型（四个配置档都运行完整集合） |
 | `profiles.*.saliency_enabled` | `true`（所有配置档） | 本配置档是否运行 BiRefNet 主体显著性 |
@@ -751,16 +751,12 @@ GPU 批处理与多遍模式的设置。
 多遍模式不是一次加载全部模型，而是：
 
 1. 按内存分块加载图片（`ram_chunk_size` 默认为 32）
-2. 对每个分块顺序运行各模型：加载模型 → 处理分块 → 卸载模型
+2. 对每个分块顺序运行各遍次：加载该遍次的模型 → 处理分块 → 卸载它们。只装得进单遍的规划则相反，会让模型保持加载（见下文）
 3. 在最后的聚合遍次中合并结果
 
 每张图片在每个分块中只解码一次并由所有遍次共享。各遍次会按可用显存分组，因此较大的 VLM 即使在小显存的显卡上也能运行。
-
-- 加载线程还会计算 EXIF、技术指标、基于规则的构图、感知哈希，以及 pyiqa 模型与 Q-ReAlign 共用的 1024 px 副本。
+| `keep_in_ram` | `"auto"` | 在多阶段分块之间将模型保留在 RAM 中（`"auto"`、`"always"`、`"never"`）；`auto` 先检查可用 RAM。CUDA 上的单阶段方案则将模型保留在 VRAM 中；`"never"` 也会禁用该特性 |
 - 构图出错只会让那一张照片失败。它会以 `composition` 阶段记入 `scan_failures`；用 `--retry-failed` 重试。
-- 在 CUDA GPU 上，当主机可用内存允许且 `keep_in_ram` 不是 `"never"` 时，一个分块会在下一批模型加载期间解码。否则（在 CPU 和 Apple MPS 上则总是如此）先解码。两种方式的结果完全相同。
-- 在某个分块之前内存不足时，内存缓存会先释放最晚才会再用到的模型，并保持 `ram_cache_reserve_gb` 的空闲量。
-- 扫描摘要会报告 `Plane rebuilds`、`I/O wait (scan thread blocked on decode)` 和 `Decode wall`。
 
 ### 自动调优行为
 
@@ -784,7 +780,7 @@ Facet 会监控资源占用并据此调整。`memory_limit_percent` 是相对*�
 | 12GB\*（`16gb` 配置档，需手动启用） | Qwen3.5 标签 VLM + Q-ReAlign | SigLIP + 显著性 + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB（`16gb` 配置档） | Qwen3.5 标签 VLM + SigLIP + TOPIQ | Q-ReAlign + 显著性 + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB（`24gb` 配置档） | Qwen3.5 4B 标签 VLM + SigLIP + Q-ReAlign + 显著性 | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+（`24gb` 配置档） | 所有模型一起（单遍） | - | - | - |
+| 35GB+（`24gb` 配置档） | 所有模型一起（单遍；权重在整次扫描期间留在显存中） | - | - | - |
 
 这几行是显卡报告总显存分别为 8.0、11.7、15.99 和 23.99 GiB 时的分组；报告 34.8 GiB 或更多时只规划一遍。规划器会留出 1.3 GiB 给 CUDA、ONNX Runtime 和桌面。12GB 显卡不会被自动选中（见[显存自动检测](#显存自动检测)）：请设置 `"vram_profile": "16gb"` 或 `FACET_VRAM_PROFILE=16gb`。
 

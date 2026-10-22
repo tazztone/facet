@@ -38,7 +38,7 @@ Facet records every scan (status, mode, directories, counters) and every per-fil
 
 ### Processing Modes
 
-**Multi-pass (default):** detects VRAM and loads models one at a time. Each pass loads its model, processes all photos, then unloads it, so high-quality models run even with limited VRAM.
+**Multi-pass (default):** detects VRAM and loads models one at a time. Each pass loads its model, processes all photos, then unloads it, so high-quality models run even with limited VRAM; a plan whose models all fit in one pass keeps them loaded for the whole scan instead.
 
 **Single-pass (`--single-pass`):** loads all models at once. Faster, but needs more VRAM.
 

@@ -562,10 +562,8 @@ Seleziona quali modelli vengono usati per ciascun profilo VRAM.
 | Impostazione | Predefinito | Descrizione |
 |---------|---------|-------------|
 | `vram_profile` | `"auto"` | Profilo attivo (`auto`, `legacy`, `8gb`, `16gb`, `24gb`); `FACET_VRAM_PROFILE` lo sovrascrive (vedi sotto) |
-| `keep_in_ram` | `"auto"` | Mantiene i modelli in RAM tra i blocchi multi-passaggio (`"auto"`, `"always"`, `"never"`); `auto` controlla prima la RAM libera |
+| `keep_in_ram` | `"auto"` | Mantiene i modelli nella RAM tra i blocchi multi-passo (`"auto"`, `"always"`, `"never"`); `auto` verifica prima la RAM disponibile. Un piano a passaggio singolo su CUDA mantiene invece i modelli nella VRAM; `"never"` disattiva questa opzione |
 | `ram_cache_reserve_gb` | `4.0` (opzionale, assente dal file fornito) | RAM (GB) da lasciare libera accanto a un modello in cache con `"auto"` |
-| `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | Modelli PyIQA da eseguire per questo profilo (tutti e quattro i profili eseguono il set completo) |
-| `profiles.*.saliency_enabled` | `true` (tutti i profili) | Esegue la saliency del soggetto BiRefNet per questo profilo |
 | `clip.model_name` | `"google/siglip2-so400m-patch16-naflex"` | Modello di embedding SigLIP 2 NaFlex (16gb/24gb) |
 | `clip.backend` | `"transformers"` | `"transformers"` (SigLIP 2 NaFlex) o `"open_clip"` (legacy) |
 | `clip.embedding_dim` | `1152` | Dimensioni dell'embedding (1152 per SigLIP 2) |
@@ -755,16 +753,12 @@ Su `16gb`/`24gb` (estetica TOPIQ), `single-pass` registra un avviso ed esegue il
 Invece di caricare tutti i modelli contemporaneamente, il multi-passaggio:
 
 1. Carica le immagini in blocchi RAM (predefinito `ram_chunk_size`: 32)
-2. Per ogni blocco, esegue i modelli in sequenza: carica modello → elabora blocco → scarica modello
+2. Per ogni blocco, esegue i passaggi in sequenza: carica i modelli del passaggio → elabora il blocco → scaricali. Un piano che entra in un solo passaggio tiene invece i modelli caricati (vedi sotto)
 3. Combina i risultati in un passaggio di aggregazione finale
 
 Ogni immagine viene decodificata una sola volta per blocco e condivisa da tutti i passaggi. I passaggi sono raggruppati per adattarsi alla VRAM disponibile, quindi i VLM più grandi funzionano anche su schede piccole.
-
-- I thread di caricamento calcolano anche EXIF, metriche tecniche, composizione basata su regole, hash percettivo e una copia condivisa da 1024 px per i modelli pyiqa e Q-ReAlign.
+| `keep_in_ram` | `"auto"` | Mantiene i modelli nella RAM tra i blocchi multi-passo (`"auto"`, `"always"`, `"never"`); `auto` verifica prima la RAM disponibile. Un piano a passaggio singolo su CUDA mantiene invece i modelli nella VRAM; `"never"` disattiva questa opzione |
 - Un errore di composizione fa fallire solo quella foto. Viene registrato in `scan_failures` con la fase `composition`; riprova con `--retry-failed`.
-- Su una GPU CUDA, un blocco viene decodificato mentre si caricano i modelli successivi, quando la memoria libera dell'host lo consente e `keep_in_ram` non è `"never"`. Altrimenti (e sempre su CPU e Apple MPS) viene decodificato prima. I risultati sono identici in entrambi i casi.
-- Quando la memoria scarseggia prima di un blocco, la cache RAM rilascia per primo il modello che servirà più tardi e mantiene libero `ram_cache_reserve_gb`.
-- Il riepilogo della scansione riporta `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` e `Decode wall`.
 
 ### Comportamento della regolazione automatica
 
@@ -788,7 +782,7 @@ Quando la VRAM lo consente, più modelli vengono eseguiti nello stesso passaggio
 | 12GB\* (profilo `16gb`, opt-in) | Tagger Qwen3.5 + Q-ReAlign | SigLIP + salienza + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB (profilo `16gb`) | Tagger Qwen3.5 + SigLIP + TOPIQ | Q-ReAlign + salienza + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB (profilo `24gb`) | Tagger Qwen3.5 4B + SigLIP + Q-ReAlign + salienza | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+ (profilo `24gb`) | Tutti i modelli insieme (single-pass) | - | - | - |
+| 35GB+ (profilo `24gb`) | Tutti i modelli insieme (single-pass; i pesi restano nella VRAM per tutta la scansione) | - | - | - |
 
 Le righe sono i piani per schede che riportano 8,0, 11,7, 15,99 e 23,99 GiB di VRAM totale; 34,8 GiB o più pianifica un singolo passaggio. Il pianificatore tiene liberi 1,3 GiB per CUDA, ONNX Runtime e il desktop. Una scheda da 12GB non viene selezionata automaticamente (vedi [Rilevamento automatico della VRAM](#rilevamento-automatico-della-vram)): imposta `"vram_profile": "16gb"` o `FACET_VRAM_PROFILE=16gb`.
 

@@ -561,10 +561,8 @@ Selecciona qué modelos se usan por cada perfil de VRAM.
 | Ajuste | Por defecto | Descripción |
 |---------|---------|-------------|
 | `vram_profile` | `"auto"` | Perfil activo (`auto`, `legacy`, `8gb`, `16gb`, `24gb`); `FACET_VRAM_PROFILE` lo anula (ver más abajo) |
-| `keep_in_ram` | `"auto"` | Mantener los modelos en RAM entre los fragmentos multipase (`"auto"`, `"always"`, `"never"`); `auto` comprueba antes la RAM libre |
+| `keep_in_ram` | `"auto"` | Mantiene los modelos en RAM entre fragmentos multipaso (`"auto"`, `"always"`, `"never"`); `auto` comprueba primero la RAM libre. Un plan de un solo paso en CUDA mantiene los modelos en VRAM; `"never"` desactiva esto |
 | `ram_cache_reserve_gb` | `4.0` (opcional, no está en el archivo incluido) | RAM (GB) que se deja libre junto a un modelo en caché con `"auto"` |
-| `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | Modelos PyIQA a ejecutar para este perfil (los cuatro perfiles ejecutan el conjunto completo) |
-| `profiles.*.saliency_enabled` | `true` (todos los perfiles) | Ejecutar la saliencia del sujeto BiRefNet para este perfil |
 | `clip.model_name` | `"google/siglip2-so400m-patch16-naflex"` | Modelo de embeddings SigLIP 2 NaFlex (16gb/24gb) |
 | `clip.backend` | `"transformers"` | `"transformers"` (SigLIP 2 NaFlex) o `"open_clip"` (heredado) |
 | `clip.embedding_dim` | `1152` | Dimensiones del embedding (1152 para SigLIP 2) |
@@ -754,16 +752,14 @@ En `16gb`/`24gb` (estética con TOPIQ), `single-pass` registra una advertencia y
 En vez de cargar todos los modelos a la vez, el modo multipase:
 
 1. Carga las imágenes en fragmentos de RAM (`ram_chunk_size` por defecto: 32)
-2. Para cada fragmento, ejecuta los modelos secuencialmente: cargar modelo → procesar fragmento → descargar modelo
+2. Para cada fragmento, ejecuta los pases secuencialmente: cargar los modelos del pase → procesar el fragmento → descargarlos. Un plan que cabe en un solo pase mantiene sus modelos cargados (ver más abajo)
 3. Combina los resultados en un pase de agregación final
 
 Cada imagen se decodifica una vez por fragmento y la comparten todos los pases. Los pases se agrupan para caber en la VRAM disponible, de modo que los VLM más grandes se ejecutan incluso en tarjetas pequeñas.
 
 - Los hilos de carga también calculan EXIF, las métricas técnicas, la composición basada en reglas, el hash perceptual y una copia compartida de 1024 px para los modelos pyiqa y Q-ReAlign.
-- Un error de composición hace fallar solo esa foto. Se registra en `scan_failures` con la etapa `composition`; reintenta con `--retry-failed`.
+| `keep_in_ram` | `"auto"` | Mantiene los modelos en RAM entre fragmentos multipaso (`"auto"`, `"always"`, `"never"`); `auto` comprueba primero la RAM libre. Un plan de un solo paso en CUDA mantiene los modelos en VRAM; `"never"` desactiva esto |
 - En una GPU CUDA, un fragmento se decodifica mientras se cargan los siguientes modelos, cuando la memoria libre del host lo permite y `keep_in_ram` no es `"never"`. En caso contrario (y siempre en CPU y Apple MPS) se decodifica primero. Los resultados son idénticos en ambos casos.
-- Cuando la memoria escasea antes de un fragmento, la caché de RAM libera primero el modelo que se necesitará más tarde y mantiene libre `ram_cache_reserve_gb`.
-- El resumen del escaneo informa de `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` y `Decode wall`.
 
 ### Comportamiento del autoajuste
 
@@ -787,7 +783,7 @@ Cuando la VRAM lo permite, varios modelos se ejecutan en el mismo pase:
 | 12GB\* (perfil `16gb`, opcional) | Etiquetador Qwen3.5 + Q-ReAlign | SigLIP + saliencia + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB (perfil `16gb`) | Etiquetador Qwen3.5 + SigLIP + TOPIQ | Q-ReAlign + saliencia + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB (perfil `24gb`) | Etiquetador Qwen3.5 4B + SigLIP + Q-ReAlign + saliencia | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+ (perfil `24gb`) | Todos los modelos juntos (monopase) | - | - | - |
+| 35GB+ (perfil `24gb`) | Todos los modelos juntos (monopase; los pesos permanecen en la VRAM durante todo el escaneo) | - | - | - |
 
 Las filas son los planes para tarjetas que informan de 8,0, 11,7, 15,99 y 23,99 GiB de VRAM total; con 34,8 GiB o más se planifica un solo pase. El planificador deja libres 1,3 GiB para CUDA, ONNX Runtime y el escritorio. Una tarjeta de 12GB no se selecciona automáticamente (consulta [Detección automática de VRAM](#detección-automática-de-vram)): define `"vram_profile": "16gb"` o `FACET_VRAM_PROFILE=16gb`.
 

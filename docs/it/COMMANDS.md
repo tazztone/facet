@@ -38,9 +38,9 @@ Facet registra ogni scansione (stato, modalità, directory, contatori) e ogni er
 
 ### Modalità di elaborazione
 
-**Multi-pass (predefinita):** rileva la VRAM e carica i modelli uno alla volta. Ogni passaggio carica il proprio modello, elabora tutte le foto, poi lo scarica, così i modelli di alta qualità funzionano anche con VRAM limitata.
+**Multi-passo (predefinito):** rileva la VRAM e carica i modelli uno alla volta. Ogni passaggio carica il suo modello, elabora tutte le foto e poi lo scarica per liberare VRAM, così i modelli di alta qualità funzionano anche con VRAM limitata; un piano i cui modelli rientrano tutti in un unico passaggio li mantiene invece caricati per l'intera scansione.
 
-**Single-pass (`--single-pass`):** carica tutti i modelli in una volta. Più veloce, ma richiede più VRAM.
+**Passaggio singolo (`--single-pass`):** carica tutti i modelli contemporaneamente. È più veloce, ma richiede più VRAM.
 
 - Valuta l'estetica con la head CLIP+MLP, quindi si applica ai profili `legacy` e `8gb`.
 - Su `16gb` e `24gb` il modello estetico è TOPIQ, che viene eseguito solo in multi-pass. Una richiesta single-pass (`--single-pass` o `processing.mode: "single-pass"`) registra un avviso ed esegue il multi-pass.

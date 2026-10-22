@@ -560,10 +560,8 @@ Seleciona quais modelos são usados por perfil de VRAM.
 | Configuração | Padrão | Descrição |
 |--------------|--------|-----------|
 | `vram_profile` | `"auto"` | Perfil ativo (`auto`, `legacy`, `8gb`, `16gb`, `24gb`); `FACET_VRAM_PROFILE` o sobrescreve (veja abaixo) |
-| `keep_in_ram` | `"auto"` | Mantém os modelos na RAM entre os blocos de múltiplas passagens (`"auto"`, `"always"`, `"never"`); `auto` verifica antes a RAM disponível |
+| `keep_in_ram` | `"auto"` | Mantém os modelos na RAM entre os blocos multi-passo (`"auto"`, `"always"`, `"never"`); `auto` verifica a RAM livre primeiro. Um plano de passo único no CUDA mantém os modelos na VRAM; `"never"` desativa isso |
 | `ram_cache_reserve_gb` | `4.0` (opcional, ausente do arquivo fornecido) | RAM (GB) a deixar livre ao lado de um modelo em cache sob `"auto"` |
-| `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | Modelos PyIQA a executar para este perfil (os quatro perfis executam o conjunto completo) |
-| `profiles.*.saliency_enabled` | `true` (todos os perfis) | Executa a saliência de assunto do BiRefNet para este perfil |
 | `clip.model_name` | `"google/siglip2-so400m-patch16-naflex"` | Modelo de embedding SigLIP 2 NaFlex (16gb/24gb) |
 | `clip.backend` | `"transformers"` | `"transformers"` (SigLIP 2 NaFlex) ou `"open_clip"` (legado) |
 | `clip.embedding_dim` | `1152` | Dimensões do embedding (1152 para SigLIP 2) |
@@ -756,10 +754,8 @@ Em vez de carregar todos os modelos de uma vez, as múltiplas passagens:
 Cada imagem é decodificada uma vez por bloco e compartilhada por todas as passagens. As passagens são agrupadas para caber na VRAM disponível, de modo que os VLMs maiores rodem mesmo em placas pequenas.
 
 - As threads de carregamento também calculam EXIF, métricas técnicas, composição baseada em regras, o hash perceptual e uma cópia compartilhada de 1024 px para os modelos pyiqa e o Q-ReAlign.
-- Um erro de composição faz falhar apenas essa foto. Ele é registrado em `scan_failures` na etapa `composition`; tente de novo com `--retry-failed`.
+| `keep_in_ram` | `"auto"` | Mantém os modelos na RAM entre os blocos multi-passo (`"auto"`, `"always"`, `"never"`); `auto` verifica a RAM livre primeiro. Um plano de passo único no CUDA mantém os modelos na VRAM; `"never"` desativa isso |
 - Em uma GPU CUDA, um bloco é decodificado enquanto os próximos modelos carregam, quando a memória livre do host permite e `keep_in_ram` não é `"never"`. Caso contrário (e sempre em CPU e Apple MPS), é decodificado primeiro. Os resultados são idênticos nos dois casos.
-- Quando a memória fica curta antes de um bloco, o cache de RAM devolve primeiro o modelo que será necessário mais tarde e mantém `ram_cache_reserve_gb` livre.
-- O resumo da varredura informa `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` e `Decode wall`.
 
 ### Comportamento do Ajuste Automático
 
@@ -783,7 +779,7 @@ Quando a VRAM permite, vários modelos rodam na mesma passagem:
 | 12GB\* (perfil `16gb`, opcional) | Tagger Qwen3.5 + Q-ReAlign | SigLIP + saliência + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16GB (perfil `16gb`) | Tagger Qwen3.5 + SigLIP + TOPIQ | Q-ReAlign + saliência + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24GB (perfil `24gb`) | Tagger Qwen3.5 4B + SigLIP + Q-ReAlign + saliência | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35GB+ (perfil `24gb`) | Todos os modelos juntos (passagem única) | - | - | - |
+| 35GB+ (perfil `24gb`) | Todos os modelos juntos (passagem única; os pesos ficam na VRAM durante toda a varredura) | - | - | - |
 
 As linhas são os planos para placas que informam 8,0, 11,7, 15,99 e 23,99 GiB de VRAM total; 34,8 GiB ou mais planeja uma única passagem. O planejador mantém 1,3 GiB livres para o CUDA, o ONNX Runtime e o desktop. Uma placa de 12GB não é selecionada automaticamente (veja [Detecção Automática de VRAM](#detecção-automática-de-vram)): defina `"vram_profile": "16gb"` ou `FACET_VRAM_PROFILE=16gb`.
 

@@ -561,10 +561,8 @@ Sélectionne les modèles utilisés selon le profil VRAM.
 | Réglage | Défaut | Description |
 |---------|--------|-------------|
 | `vram_profile` | `"auto"` | Profil actif (`auto`, `legacy`, `8gb`, `16gb`, `24gb`) ; `FACET_VRAM_PROFILE` le surcharge (voir ci-dessous) |
-| `keep_in_ram` | `"auto"` | Garder les modèles en RAM entre les blocs multi-pass (`"auto"`, `"always"`, `"never"`) ; `auto` vérifie d'abord la RAM libre |
+| `keep_in_ram` | `"auto"` | Conserve les modèles en RAM entre les fragments multi-passes (`"auto"`, `"always"`, `"never"`) ; `auto` vérifie d'abord la RAM libre. Un plan à passe unique sur CUDA conserve les modèles en VRAM ; `"never"` désactive cela |
 | `ram_cache_reserve_gb` | `4.0` (optionnel, absent du fichier livré) | RAM (Go) à laisser libre à côté d'un modèle en cache sous `"auto"` |
-| `profiles.*.supplementary_pyiqa` | `["topiq_iaa", "topiq_nr_face", "liqe"]` | Modèles PyIQA à exécuter pour ce profil (les quatre profils exécutent l’ensemble complet) |
-| `profiles.*.saliency_enabled` | `true` (tous les profils) | Exécuter la saillance du sujet BiRefNet pour ce profil |
 | `clip.model_name` | `"google/siglip2-so400m-patch16-naflex"` | Modèle d'embedding SigLIP 2 NaFlex (16gb/24gb) |
 | `clip.backend` | `"transformers"` | `"transformers"` (SigLIP 2 NaFlex) ou `"open_clip"` (legacy) |
 | `clip.embedding_dim` | `1152` | Dimensions de l'embedding (1152 pour SigLIP 2) |
@@ -758,10 +756,8 @@ Au lieu de charger tous les modèles en même temps, le multi-pass :
 Chaque image est décodée une fois par bloc et partagée par toutes les passes. Les passes sont regroupées pour tenir dans la VRAM disponible, de sorte que les VLM plus gros s'exécutent même sur de petites cartes.
 
 - Les threads de chargement calculent aussi l'EXIF, les métriques techniques, la composition à base de règles, le hash perceptuel et une copie partagée de 1024 px pour les modèles pyiqa et Q-ReAlign.
-- Une erreur de composition ne fait échouer que cette photo. Elle est enregistrée dans `scan_failures` à l'étape `composition` ; réessayez avec `--retry-failed`.
+| `keep_in_ram` | `"auto"` | Conserve les modèles en RAM entre les fragments multi-passes (`"auto"`, `"always"`, `"never"`) ; `auto` vérifie d'abord la RAM libre. Un plan à passe unique sur CUDA conserve les modèles en VRAM ; `"never"` désactive cela |
 - Sur un GPU CUDA, un bloc est décodé pendant le chargement des modèles suivants, lorsque la mémoire libre de l'hôte le permet et que `keep_in_ram` n'est pas `"never"`. Sinon (et toujours sur CPU et Apple MPS), il est décodé d'abord. Les résultats sont identiques dans les deux cas.
-- Lorsque la mémoire manque avant un bloc, le cache RAM libère d'abord le modèle nécessaire le plus tard dans le futur, et garde `ram_cache_reserve_gb` libre.
-- Le résumé du scan indique `Plane rebuilds`, `I/O wait (scan thread blocked on decode)` et `Decode wall`.
 
 ### Comportement de l'auto-réglage
 
@@ -785,7 +781,7 @@ Lorsque la VRAM le permet, plusieurs modèles s'exécutent dans la même passe 
 | 12 Go\* (profil `16gb`, optionnel) | Tagger Qwen3.5 + Q-ReAlign | SigLIP + saillance + TOPIQ IAA | TOPIQ + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace |
 | 16 Go (profil `16gb`) | Tagger Qwen3.5 + SigLIP + TOPIQ | Q-ReAlign + saillance + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net | InsightFace | - |
 | 24 Go (profil `24gb`) | Tagger Qwen3.5 4B + SigLIP + Q-ReAlign + saillance | TOPIQ + TOPIQ IAA + TOPIQ NR-Face + LIQE + SAMP-Net + InsightFace | - | - |
-| 35 Go+ (profil `24gb`) | Tous les modèles ensemble (single-pass) | - | - | - |
+| 35 Go+ (profil `24gb`) | Tous les modèles ensemble (single-pass ; les poids restent en VRAM pendant tout le scan) | - | - | - |
 
 Les lignes sont les plans pour des cartes annonçant 8,0, 11,7, 15,99 et 23,99 GiB de VRAM totale ; 34,8 GiB ou plus donne une seule passe. Le planificateur garde 1,3 GiB libre pour CUDA, ONNX Runtime et le bureau. Une carte de 12 Go n'est pas sélectionnée automatiquement (voir [Détection automatique de la VRAM](#détection-automatique-de-la-vram)) : définissez `"vram_profile": "16gb"` ou `FACET_VRAM_PROFILE=16gb`.
 
