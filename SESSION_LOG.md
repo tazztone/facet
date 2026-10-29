@@ -149,9 +149,12 @@
   - `docs/COMMANDS.md`, `docs/CONFIGURATION.md` and all 6 translations (`de`, `es`, `fr`, `it`, `pt`, `zh`): reconciled residency bullets and RAW preview documentation with upstream's rewritten bullet structure.
 - **Verification**:
   - Full suite for touched subsystems (`test_single_pass_residency`, `test_scan_decode_overlap`, `test_raw_decode`, `test_render_version`, `test_scan`) all passed (189/189 tests green).
+- **Discussions opened**:
+  - #408: [Idea / Perf: Keep single-pass plan's models resident in VRAM across scan chunks](https://github.com/ncoevoet/facet/discussions/408)
+  - #409: [RFC / Idea: Opt-in RAW metrics scoring from camera-embedded full-frame preview](https://github.com/ncoevoet/facet/discussions/409)
 - **Next / Unresolved**:
-  - Push rebased `master` to fork: `git push --force-with-lease origin master`.
-  - Open RFC issues upstream with benchmark data from this log.
+  - Monitor upstream discussions for maintainer feedback.
+  - Phase 5 of local rollout: test `--raw-metrics-preview` on full library rescan.
 
 
 
