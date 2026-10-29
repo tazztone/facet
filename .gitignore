@@ -122,3 +122,6 @@ photos_all/
 bench/results/*.json
 .claude/loop/
 
+AGENTS.md
+client/package-lock.json
+*.arw
