@@ -31,6 +31,7 @@
 | `python facet.py /path --force-low-space` | Omite la comprobación de espacio libre antes del escaneo |
 
 **`--resume`** también recupera un escaneo interrumpido por un fallo, falta de memoria o corte de corriente: una ejecución aún marcada como `running` cuyo heartbeat es más antiguo que `processing.scan_stale_seconds` (por defecto 120). Reutiliza los directorios de esa ejecución. Con `--force`, omite los archivos ya repuntuados desde que comenzó la ejecución. Se niega a iniciarse si otro escaneo parece activo.
+| `python facet.py /path --raw-metrics-preview` | Puntúa los archivos RAW desde la vista previa JPEG incrustada de la cámara cuando cubre al menos el 95% del encuadre del sensor (recurre a una interpolación cromática rawpy por archivo). Más rápido y ligero en E/S, pero la curva tonal, el enfoque y la reducción de ruido de la cámara llegan a las puntuaciones técnicas — consulta [Decodificación RAW](CONFIGURATION.md#puntuación-a-partir-de-la-vista-previa-incrustada-de-la-cámara) |
 
 ### Registro de escaneos
 

@@ -31,6 +31,7 @@
 | `python facet.py /path --force-low-space` | Ignore la vérification d'espace libre avant l'analyse |
 
 **`--resume`** récupère aussi une analyse tuée par un plantage, un manque de mémoire ou une coupure de courant : une exécution encore marquée `running` dont le heartbeat est plus ancien que `processing.scan_stale_seconds` (120 par défaut). Il réutilise les répertoires de cette exécution. Avec `--force`, il ignore les fichiers déjà re-notés depuis le démarrage de l'exécution. Il refuse de démarrer si une autre analyse semble active.
+| `python facet.py /path --raw-metrics-preview` | Noter les fichiers RAW à partir de l'aperçu JPEG intégré au boîtier lorsqu'il couvre au moins 95 % du capteur (se replie sur un dématriçage rawpy par fichier). Plus rapide et sobre en E/S, mais la courbe tonale, la netteté et la réduction de bruit du boîtier se répercutent sur les scores techniques — voir [Décodage RAW](CONFIGURATION.md#notation-depuis-laperçu-intégré-au-boîtier) |
 
 ### Suivi des analyses
 

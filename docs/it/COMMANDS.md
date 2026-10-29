@@ -31,6 +31,7 @@
 | `python facet.py /path --force-low-space` | Salta il controllo dello spazio libero prima della scansione |
 
 **`--resume`** recupera anche una scansione terminata da un crash, da memoria esaurita o da un'interruzione di corrente: un'esecuzione ancora contrassegnata come `running` il cui heartbeat è più vecchio di `processing.scan_stale_seconds` (predefinito 120). Riutilizza le directory di quell'esecuzione. Con `--force`, salta i file già rivalutati dall'inizio dell'esecuzione. Rifiuta di partire se un'altra scansione sembra attiva.
+| `python facet.py /path --raw-metrics-preview` | Assegna i punteggi ai file RAW dall'anteprima JPEG incorporata della fotocamera quando copre almeno il 95% del frame del sensore (ricade sul demosaic rawpy per singolo file). Più veloce e leggero sull'I/O, ma la curva di tono, la nitidezza e la riduzione del rumore della fotocamera raggiungono i punteggi tecnici — vedere [Decodifica RAW](CONFIGURATION.md#valutazione-dallanteprima-incorporata-nella-fotocamera) |
 
 ### Registrazione delle scansioni
 

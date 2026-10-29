@@ -31,6 +31,7 @@
 | `python facet.py /path --force-low-space` | 跳过扫描前的可用空间检查 |
 
 **`--resume`** 还能恢复因崩溃、内存耗尽或断电而被终止的扫描：即状态仍为 `running`、且心跳早于 `processing.scan_stale_seconds`（默认 120）的运行。它沿用该次运行的目录。配合 `--force` 时，会跳过自该次运行开始后已重新评分的文件。若另一次扫描看起来仍在运行，则拒绝启动。
+| `python facet.py /path --raw-metrics-preview` | 当相机内嵌的 JPEG 预览覆盖至少 95% 的传感器画幅时，以此预览为 RAW 文件评分（按文件回退至 rawpy 去马赛克）。速度更快且 I/O 负担轻，但相机的色调曲线、锐化与降噪会影响技术指标——参见 [RAW 解码](CONFIGURATION.md#基于相机内嵌预览评分) |
 
 ### 扫描记录
 

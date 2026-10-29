@@ -31,6 +31,7 @@
 | `python facet.py /path --force-low-space` | Skip the free-space check before the scan |
 
 **`--resume`** also recovers a scan killed by a crash, out-of-memory or power loss: a run still marked `running` whose heartbeat is older than `processing.scan_stale_seconds` (default 120). It reuses that run's directories. With `--force`, it skips files already re-scored since the run started. It refuses to start if another scan looks live.
+| `python facet.py /path --raw-metrics-preview` | Score RAW files from the camera-embedded preview JPEG when it covers at least 95% of the sensor frame (falls back to a rawpy demosaic per file). Faster and I/O-light, but the camera's tone curve, sharpening and noise reduction then reach the technical scores — see [RAW Decode](CONFIGURATION.md#scoring-from-the-camera-embedded-preview) |
 
 ### Scan Bookkeeping
 
