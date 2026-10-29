@@ -133,6 +133,27 @@
 - **Full suite and regressions.** `tests/` at HEAD: 80 failed, 7319 passed, 91 skipped. Replaying those same 80 at the pre-change commit `80a5f453` gives the identical 79 failures plus one order-dependent flake (`test_thumbnails.py::…test_a_truncated_rw2_serves_the_stored_thumbnail_briefly`, which passes when the file runs alone), so the change adds no regression; the rest belong to the pre-existing live-`scoring_config.json` families (`test_cull`, `test_export`, `test_thumbnails`, `test_social_crop`, `test_diagnostics`, `test_path_validation`, `test_async_routes_do_not_block`). `ruff check` passes on every changed file after folding one unused `os` import in `tests/test_raw_decode.py` into the test commit.
 - **Unresolved / left to the user**: nothing pushed. Phase 5 of the rollout — enable `metrics_from_embedded_preview` in the real `scoring_config.json`, delete the 1,188 `2026-10-21` `.ARW` rows, and `--force` rescan (expect ~2.0-2.4 it/s instead of ~0.45) — is not done, because it is destructive and opt-in. The plan's **≥ 2.0 it/s** acceptance target is therefore still unmeasured end to end; only the per-file decode cost (0.12 s / 2.5 MB read against 2.14 s / 38.3 MB) and the frame/gate behaviour were verified. A timed sample scan is the first thing to run before enabling it on the library.
 
+## 2026-10-29 — Fork rebase onto upstream/master (v1.26.0+) & upstream RFC prep
+
+- **Rebase**: Rebased local `master` cleanly on top of `upstream/master` (`31954ce8`, PR #403, 973 upstream commits pulled).
+  - Preserved pre-rebase state in `backup-master-pre-rebase` branch.
+  - Replayed 4 structured commits:
+    1. `6aea6f9c`: `docs: add RAW vs preview JPEG score comparison analysis to SESSION_LOG`
+    2. `0e347e4a`: `perf(multi-pass): keep a single-pass plan's models in VRAM across chunks`
+    3. `6c2ae8e2`: `feat(raw): score RAW metrics from camera-embedded preview` (squashed config, DB stamp, tests, docs)
+    4. `900705da`: `gitignore` (ignore local `.arw`, `AGENTS.md`, `client/package-lock.json`)
+- **Conflict Resolution**:
+  - `db/schema.py`: merged `metrics_render` alongside upstream's `preview_revision`, `date_manually_set`, `gps_manually_set`, `is_kept`.
+  - `tests/test_scan.py`: added `raw_metrics_preview` to `_JOB_MODIFIERS`.
+  - `client/package-lock.json`: kept upstream version 1.22.1 / Angular 22.2.3.
+  - `docs/COMMANDS.md`, `docs/CONFIGURATION.md` and all 6 translations (`de`, `es`, `fr`, `it`, `pt`, `zh`): reconciled residency bullets and RAW preview documentation with upstream's rewritten bullet structure.
+- **Verification**:
+  - Full suite for touched subsystems (`test_single_pass_residency`, `test_scan_decode_overlap`, `test_raw_decode`, `test_render_version`, `test_scan`) all passed (189/189 tests green).
+- **Next / Unresolved**:
+  - Push rebased `master` to fork: `git push --force-with-lease origin master`.
+  - Open RFC issues upstream with benchmark data from this log.
+
+
 
 
 
